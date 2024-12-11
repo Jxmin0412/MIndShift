@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import openai
 
 # Set OpenAI API key securely
-openai.api_key = "your_openai_api_key"
+openai.api_key = st.secrets("openai.api_key")
 if not openai.api_key:
     st.error("OpenAI API Key is missing. Set it in the .env file.")
 
