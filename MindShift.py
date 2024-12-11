@@ -105,6 +105,51 @@ def fetch_questions(text_content, quiz_level):
         st.error(f"Error generating quiz: {e}")
         return []
 
+def generate_post_learning_quiz(roadmap_content, quiz_level):
+    prompt = f"""
+    Based on this roadmap content: {roadmap_content}, create a set of 7 post-learning questions with a mix of MCQs and True/False. 
+    Level: {quiz_level}
+    Format as JSON:
+    [
+        {{"type": "mcq", "question": "...", "options": {{"a": "...", "b": "...", "c": "...", "d": "..."}}, "correct": "a"}},
+        {{"type": "true_false", "question": "...", "correct": true}}
+    ]
+    """
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=1000,
+        )
+        response_text = response.choices[0].message.content
+
+        try:
+            questions = json.loads(response_text)
+            # Filter out malformed questions
+            valid_questions = [
+                question
+                for question in questions
+                if (
+                    question["type"] == "mcq"
+                    and "options" in question
+                    and question["correct"] in question["options"]
+                )
+                or (
+                    question["type"] == "true_false"
+                    and "correct" in question
+                    and isinstance(question["correct"], bool)
+                )
+            ]
+            return valid_questions
+        except json.JSONDecodeError as e:
+            st.error(f"Error parsing JSON from OpenAI: {e}")
+            return []
+    except Exception as e:
+        st.error(f"Error generating post-learning quiz: {e}")
+        return []
+
+
 
 # Streamlit App
 def main():
@@ -126,7 +171,7 @@ def main():
         st.session_state["quizzes"] = []
 
     # Tabs
-    tab1, tab2, tab3 = st.tabs(["Home", "Quizzes", "Roadmap"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Home", "Pre-learning Quiz", "Roadmap", "Post-learning Quiz"])
 
     # Home Tab
     with tab1:
@@ -137,7 +182,7 @@ def main():
             if error:
                 st.error(error)
             else:
-                course_data = data
+                course_data = data # your data on a global var
                 st.json(data)
                 st.session_state["course_topics"] = data.get("What You'll Learn", [])
 
@@ -259,7 +304,7 @@ def main():
                 with st.spinner("Generating your roadmap..."):
                     try:
                         # Fetch topics from session state
-                        all_topics = st.session_state["course_topics"]
+                        all_topics = course_data # assigning data 
 
                         # Prepare a detailed roadmap prompt for OpenAI
                         roadmap_prompt = f"""
@@ -292,6 +337,77 @@ def main():
             st.warning(
                 "Complete a quiz in the Quizzes tab to unlock the roadmap feature."
             )
+
+    with tab4:
+        st.subheader("Generate Post-learning Quiz")
+
+        if "roadmap" not in st.session_state or not st.session_state["roadmap"]:
+            st.warning("Generate a roadmap first to create a post-learning quiz.")
+        else:
+            roadmap_content = st.session_state["roadmap"]
+            quiz_level = st.selectbox(
+                "Select quiz level:", ["Easy", "Medium", "Hard"], key="post_learning_quiz_level"
+            )
+
+            if st.button("Generate Post-learning Quiz"):
+                post_questions = generate_post_learning_quiz(roadmap_content, quiz_level)
+                if post_questions:
+                    st.success("Post-learning Quiz generated successfully!")
+                    st.session_state["post_quiz"] = post_questions
+                    st.session_state["post_quiz_answers"] = {}
+                    st.session_state["post_quiz_submitted"] = False
+                else:
+                    st.error("Failed to generate post-learning questions. Try again.")
+
+        if "post_quiz" in st.session_state and st.session_state["post_quiz"]:
+            for idx, question in enumerate(st.session_state["post_quiz"]):
+                if question["type"] == "mcq":
+                    st.write(f"Q{idx + 1}: {question['question']}")
+                    options = question["options"]
+                    selected = st.radio(
+                        "Choose your answer:",
+                        list(options.values()),
+                        key=f"post_question_{idx}",
+                    )
+                    st.session_state["post_quiz_answers"][idx] = selected
+
+                elif question["type"] == "true_false":
+                    st.write(f"Q{idx + 1}: {question['question']}")
+                    selected = st.radio(
+                        "True or False:", ["True", "False"], key=f"post_question_{idx}"
+                    )
+                    st.session_state["post_quiz_answers"][idx] = selected == "True"
+
+            if not st.session_state.get("post_quiz_submitted", False) and st.button(
+                "Submit Post-learning Quiz"
+            ):
+                st.session_state["post_quiz_submitted"] = True
+                score = 0
+                for idx, question in enumerate(st.session_state["post_quiz"]):
+                    correct_answer = question["correct"]
+                    user_answer = st.session_state["post_quiz_answers"].get(idx)
+                    if user_answer == correct_answer:
+                        score += 1
+                st.session_state["last_post_quiz_score"] = score
+
+            if st.session_state.get("post_quiz_submitted", False):
+                st.subheader("Post-learning Quiz Results")
+                score = st.session_state["last_post_quiz_score"]
+                total_questions = len(st.session_state["post_quiz"])
+                st.write(f"Your score: {score}/{total_questions}")
+                for idx, question in enumerate(st.session_state["post_quiz"]):
+                    st.write(f"Q{idx + 1}: {question['question']}")
+                    correct_answer = question["correct"]
+                    user_answer = st.session_state["post_quiz_answers"].get(idx)
+                    if user_answer == correct_answer:
+                        st.success(f"Your answer: {user_answer} (Correct)")
+                    else:
+                        st.error(f"Your answer: {user_answer} (Incorrect)")
+                        st.write(f"Correct answer: {correct_answer}")
+
+
+
+
 
 
 if __name__ == "__main__":
