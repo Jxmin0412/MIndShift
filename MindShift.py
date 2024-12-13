@@ -196,82 +196,82 @@ def main():
             text_content = str(course_data) + st.text_area("Enter additional topics:")
             quiz_level = st.selectbox("Select quiz level:", ["Easy", "Medium", "Hard"])
 
-        if st.button("Generate Quiz"):
-            if text_content.strip():
-                # Generate questions using OpenAI
-                questions = fetch_questions(text_content, quiz_level)
-                if questions:
-                    st.success("Quiz generated successfully!")
-                    st.session_state["current_quiz"] = questions
-                    st.session_state["selected_answers"] = {}
-                    st.session_state["quiz_submitted"] = False
+            if st.button("Generate Quiz"):
+                if text_content.strip():
+                    # Generate questions using OpenAI
+                    questions = fetch_questions(text_content, quiz_level)
+                    if questions:
+                        st.success("Quiz generated successfully!")
+                        st.session_state["current_quiz"] = questions
+                        st.session_state["selected_answers"] = {}
+                        st.session_state["quiz_submitted"] = False
+                    else:
+                        st.error("Failed to generate questions. Try again.")
                 else:
-                    st.error("Failed to generate questions. Try again.")
-            else:
-                st.warning("Enter some text to generate a quiz.")
+                    st.warning("Enter some text to generate a quiz.")
 
-        # If questions are available, display them
-        if "current_quiz" in st.session_state and st.session_state["current_quiz"]:
-            for idx, question in enumerate(st.session_state["current_quiz"]):
-                st.write(f"Q{idx + 1}: {question['mcq']}")
-                options = question["options"]
-                selected = st.radio(
-                    "Choose your answer:",
-                    list(options.values()),
-                    key=f"question_{idx}",
-                    index=1,
-                )
-                # Store selected answers in session state
-                st.session_state["selected_answers"][idx] = selected
-
-            if not st.session_state.get("quiz_submitted", False) and st.button(
-                "Submit Answers"
-            ):
-                # Evaluate answers and calculate score
-                st.session_state["quiz_submitted"] = True
-                score = 0
+            # If questions are available, display them
+            if "current_quiz" in st.session_state and st.session_state["current_quiz"]:
                 for idx, question in enumerate(st.session_state["current_quiz"]):
-                    correct_option = question["options"][question["correct"]]
-                    user_answer = st.session_state["selected_answers"].get(idx)
-                    if user_answer == correct_option:
-                        score += 1
+                    st.write(f"Q{idx + 1}: {question['mcq']}")
+                    options = question["options"]
+                    selected = st.radio(
+                        "Choose your answer:",
+                        list(options.values()),
+                        key=f"question_{idx}",
+                        index=1,
+                    )
+                    # Store selected answers in session state
+                    st.session_state["selected_answers"][idx] = selected
 
-                st.session_state["last_quiz_score"] = score
+                if not st.session_state.get("quiz_submitted", False) and st.button(
+                    "Submit Answers"
+                ):
+                    # Evaluate answers and calculate score
+                    st.session_state["quiz_submitted"] = True
+                    score = 0
+                    for idx, question in enumerate(st.session_state["current_quiz"]):
+                        correct_option = question["options"][question["correct"]]
+                        user_answer = st.session_state["selected_answers"].get(idx)
+                        if user_answer == correct_option:
+                            score += 1
 
-            # Display results after submission
-            if st.session_state.get("quiz_submitted", False):
-                st.subheader("Quiz Results")
-                score = st.session_state["last_quiz_score"]
-                total_questions = len(st.session_state["current_quiz"])
-                st.write(f"Your score: {score}/{total_questions}")
+                    st.session_state["last_quiz_score"] = score
 
-                # Show correct answers and explanations
-                for idx, question in enumerate(st.session_state["current_quiz"]):
-                    if "mcq" in question and isinstance(question["mcq"], str):
-                        st.write(f"Q{idx + 1}: {question['mcq']}")
-                    else:
-                        st.warning(
-                            f"Question {idx + 1} is invalid or missing required keys. Skipping."
-                        )
+                # Display results after submission
+                if st.session_state.get("quiz_submitted", False):
+                    st.subheader("Quiz Results")
+                    score = st.session_state["last_quiz_score"]
+                    total_questions = len(st.session_state["current_quiz"])
+                    st.write(f"Your score: {score}/{total_questions}")
 
-                    correct_option = question["options"][question["correct"]]
-                    user_answer = st.session_state["selected_answers"].get(idx)
-                    if user_answer == correct_option:
-                        st.success(f"Your answer: {user_answer} (Correct)")
-                    else:
-                        st.error(f"Your answer: {user_answer} (Incorrect)")
-                        st.write(f"Correct answer: {correct_option}")
+                    # Show correct answers and explanations
+                    for idx, question in enumerate(st.session_state["current_quiz"]):
+                        if "mcq" in question and isinstance(question["mcq"], str):
+                            st.write(f"Q{idx + 1}: {question['mcq']}")
+                        else:
+                            st.warning(
+                                f"Question {idx + 1} is invalid or missing required keys. Skipping."
+                            )
 
-                # Add quiz result to session history
-                if "quizzes" not in st.session_state:
-                    st.session_state["quizzes"] = []
-                st.session_state["quizzes"].append(
-                    {
-                        "date": datetime.date.today(),
-                        "score": score,
-                        "total": total_questions,
-                    }
-                )
+                        correct_option = question["options"][question["correct"]]
+                        user_answer = st.session_state["selected_answers"].get(idx)
+                        if user_answer == correct_option:
+                            st.success(f"Your answer: {user_answer} (Correct)")
+                        else:
+                            st.error(f"Your answer: {user_answer} (Incorrect)")
+                            st.write(f"Correct answer: {correct_option}")
+
+                    # Add quiz result to session history
+                    if "quizzes" not in st.session_state:
+                        st.session_state["quizzes"] = []
+                    st.session_state["quizzes"].append(
+                        {
+                            "date": datetime.date.today(),
+                            "score": score,
+                            "total": total_questions,
+                        }
+                    )
 
     # Roadmap Tab
     with tab3:
