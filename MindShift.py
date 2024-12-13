@@ -189,8 +189,12 @@ def main():
     # Quizzes Tab
     with tab2:
         st.subheader("Generate a Quiz")
-        text_content = str(course_data) + st.text_area("Enter additional topics:")
-        quiz_level = st.selectbox("Select quiz level:", ["Easy", "Medium", "Hard"])
+
+        if not course_data:
+            st.warning("Please enter course URL to unlock Pre-learning Quiz feature")
+        else:
+            text_content = str(course_data) + st.text_area("Enter additional topics:")
+            quiz_level = st.selectbox("Select quiz level:", ["Easy", "Medium", "Hard"])
 
         if st.button("Generate Quiz"):
             if text_content.strip():
