@@ -189,22 +189,26 @@ def main():
     # Quizzes Tab
     with tab2:
         st.subheader("Generate a Quiz")
-        text_content = str(course_data) + st.text_area("Enter additional topics:")
-        quiz_level = st.selectbox("Select quiz level:", ["Easy", "Medium", "Hard"])
+        if not course_data:
+            st.warning("Please enter a valid course URL in the Home tab to unlock the Pre-learning Quiz feature.")
+        else:
+            # Allow quiz generation only if course data is available
+            text_content = str(course_data) + st.text_area("Enter additional topics:")
+            quiz_level = st.selectbox("Select quiz level:", ["Easy", "Medium", "Hard"])
 
-        if st.button("Generate Quiz"):
-            if text_content.strip():
-                # Generate questions using OpenAI
-                questions = fetch_questions(text_content, quiz_level)
-                if questions:
-                    st.success("Quiz generated successfully!")
-                    st.session_state["current_quiz"] = questions
-                    st.session_state["selected_answers"] = {}
-                    st.session_state["quiz_submitted"] = False
+            if st.button("Generate Quiz"):
+                if text_content.strip():
+                    # Generate questions using OpenAI
+                    questions = fetch_questions(text_content, quiz_level)
+                    if questions:
+                        st.success("Quiz generated successfully!")
+                        st.session_state["current_quiz"] = questions
+                        st.session_state["selected_answers"] = {}
+                        st.session_state["quiz_submitted"] = False
+                    else:
+                        st.error("Failed to generate questions. Try again.")
                 else:
-                    st.error("Failed to generate questions. Try again.")
-            else:
-                st.warning("Enter some text to generate a quiz.")
+                    st.warning("Enter some text to generate a quiz.")
 
         # If questions are available, display them
         if "current_quiz" in st.session_state and st.session_state["current_quiz"]:
@@ -215,14 +219,12 @@ def main():
                     "Choose your answer:",
                     list(options.values()),
                     key=f"question_{idx}",
-                    index=1,
+                    index=0,
                 )
                 # Store selected answers in session state
                 st.session_state["selected_answers"][idx] = selected
 
-            if not st.session_state.get("quiz_submitted", False) and st.button(
-                "Submit Answers"
-            ):
+            if not st.session_state.get("quiz_submitted", False) and st.button("Submit Answers"):
                 # Evaluate answers and calculate score
                 st.session_state["quiz_submitted"] = True
                 score = 0
@@ -243,13 +245,7 @@ def main():
 
                 # Show correct answers and explanations
                 for idx, question in enumerate(st.session_state["current_quiz"]):
-                    if "mcq" in question and isinstance(question["mcq"], str):
-                        st.write(f"Q{idx + 1}: {question['mcq']}")
-                    else:
-                        st.warning(
-                            f"Question {idx + 1} is invalid or missing required keys. Skipping."
-                        )
-
+                    st.write(f"Q{idx + 1}: {question['mcq']}")
                     correct_option = question["options"][question["correct"]]
                     user_answer = st.session_state["selected_answers"].get(idx)
                     if user_answer == correct_option:
